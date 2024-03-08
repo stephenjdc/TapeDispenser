@@ -46,7 +46,7 @@ float millimetresPerEvent;
 
 //////
 //////
-// Rotation Tracking
+// Rotation Calculation
 //////
 //////
 int eventsPerFullRotation = notchesInSpool; 
@@ -54,17 +54,36 @@ int minimumEventsToAnnounce = 3;
 int eventCounter = 0;
 unsigned long timeOfLastEvent = 0;
 float eventTimeoutInMilliseconds = 750;
-// To debounce IR pulses
-float minimumTimeBetweenEvents = 8;
-#define IR_SENSOR_PIN D6 
-unsigned long timeOfLastAnnouncement = 0;
-float minimumTimeBetweenAnouncements = 5000;
+//////
+//////
+
+
+//////
+//////
+// Debug
+//////
+//////
 #define STATE_LED_PIN D5
 #define WARN_LED_PIN D7
 bool ledState = false;
-int lastIRState = 0;
 //////
 //////
+
+
+//////
+//////
+// IR Sensing
+//////
+//////
+#define IR_SENSOR_PIN A0 
+int irLowThreshold = 30;
+int irHighThreshold = 100;
+bool sensorArmed = true;
+// To debounce IR pulses
+float minimumTimeBetweenEvents = 4;
+//////
+//////
+
 
 //////
 //////
@@ -89,14 +108,15 @@ String feetFile = filePrefix + "feet" + fileSuffix;
 //////
 String filenameForNumber(int number);
 AudioFileSourceSPIFFS* fileForName(String name);
+int eventsToInches(int eventCount);
+bool eventsFinished();
 void triggerBlessing();
 void tapeMoved();
-bool eventsFinished();
 void resetCounters();
 void triggerBlessing();
-int eventsToInches(int eventCount);
 void playBlessingForInches(int inches);
 void checkEvents();
+void checkSensor();
 //////
 //////
 
@@ -121,15 +141,25 @@ void setup()
   pinMode(WARN_LED_PIN, OUTPUT);
   pinMode(STATE_LED_PIN, OUTPUT);
 
-  pinMode(IR_SENSOR_PIN, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(IR_SENSOR_PIN), tapeMoved, FALLING);
-
   Serial.begin(115200);
   Serial.println("Hello! How's the son?");
 }
 
 void loop() {
+  checkSensor();
   checkEvents();
+}
+
+void checkSensor() {
+  int value = analogRead(IR_SENSOR_PIN);
+  if (value < irLowThreshold) {
+    if (sensorArmed) {
+      tapeMoved();
+      sensorArmed = false;
+    }
+  } else if (value > irHighThreshold) {
+    sensorArmed = true;
+  }
 }
 
 /*
@@ -169,15 +199,12 @@ void showDebugLEDs(unsigned long time, bool debounced) {
     ledState = true;
   }
 }
+
 /*
-  Callback triggered upon interrupt from IR sensor
+  Triggered once per IR event
   Increments rotation event counter and time
 */
-IRAM_ATTR void tapeMoved() {
-  // Skip if sensor reads HIGH
-  if (digitalRead(IR_SENSOR_PIN)) {
-      return;
-  }
+void tapeMoved() {
   unsigned long time = millis();
   // Debounce signal from IR led
   if ((time - timeOfLastEvent) < minimumTimeBetweenEvents) {
