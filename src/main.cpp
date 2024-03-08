@@ -53,10 +53,16 @@ int eventsPerFullRotation = notchesInSpool;
 int minimumEventsToAnnounce = 3;
 int eventCounter = 0;
 unsigned long timeOfLastEvent = 0;
-float eventTimeoutInMilliseconds = 500;
-#define IR_SENSOR_PIN D3
+float eventTimeoutInMilliseconds = 750;
+// To debounce IR pulses
+float minimumTimeBetweenEvents = 8;
+#define IR_SENSOR_PIN D6 
 unsigned long timeOfLastAnnouncement = 0;
 float minimumTimeBetweenAnouncements = 5000;
+#define STATE_LED_PIN D5
+#define WARN_LED_PIN D7
+bool ledState = false;
+int lastIRState = 0;
 //////
 //////
 
@@ -112,6 +118,8 @@ void setup()
 
   WiFi.mode(WIFI_OFF);
   // SPIFFS.begin();
+  pinMode(WARN_LED_PIN, OUTPUT);
+  pinMode(STATE_LED_PIN, OUTPUT);
 
   pinMode(IR_SENSOR_PIN, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(IR_SENSOR_PIN), tapeMoved, FALLING);
@@ -150,13 +158,37 @@ void checkEvents() {
   }
 }
 
+void showDebugLEDs(unsigned long time, bool debounced) {
+  digitalWrite(WARN_LED_PIN, debounced);
+
+  if (ledState) {
+    digitalWrite(STATE_LED_PIN, LOW);
+    ledState = false;
+  } else {
+    digitalWrite(STATE_LED_PIN, HIGH);
+    ledState = true;
+  }
+}
 /*
   Callback triggered upon interrupt from IR sensor
   Increments rotation event counter and time
 */
 IRAM_ATTR void tapeMoved() {
-  eventCounter += 1;
-  timeOfLastEvent = millis();
+  // Skip if sensor reads HIGH
+  if (digitalRead(IR_SENSOR_PIN)) {
+      return;
+  }
+  unsigned long time = millis();
+  // Debounce signal from IR led
+  if ((time - timeOfLastEvent) < minimumTimeBetweenEvents) {
+    showDebugLEDs(time, true);
+    return;
+  } 
+  showDebugLEDs(time, false);
+
+  // Set event properties
+  eventCounter += 1;  
+  timeOfLastEvent = time;
 }
 
 /*
@@ -176,34 +208,50 @@ void triggerBlessing() {
 void resetCounters() {
   eventCounter = 0;
   timeOfLastEvent = 0;
-  Serial.println("Resetting for next dispense, sleeping for a few seconds.");
 }
 
 void playBlessingForInches(int inches) {
+  Serial.println("");
+  Serial.println("");
+  Serial.println("");
+
   int feet = inches / inchesPerFoot;
   int remainingInches = inches % inchesPerFoot;
 
-  Serial.println(youHaveUsedFile);
+  Serial.print("You have used ");
+  // Serial.println(youHaveUsedFile);
 
   if (feet > 0) {
-    Serial.println(filenameForNumber(feet));
+    Serial.print(feet);
+    // Serial.println(filenameForNumber(feet));
     if (feet == 1) {
-      Serial.println(footFile);
+      Serial.print(" foot ");
+      // Serial.println(footFile);
     } else {
-      Serial.println(feetFile);
+      Serial.print(" feet ");
+      // Serial.println(feetFile);
     }
   }
 
   if (remainingInches > 0) {
-    Serial.println(filenameForNumber(remainingInches));
+    Serial.print(remainingInches);
+    // Serial.println(filenameForNumber(remainingInches));
     if (remainingInches == 1) {
-      Serial.println(inchFile);
+      // Serial.println(inchFile);
+      Serial.print(" inch ");
     } else {
-      Serial.println(inchesFile);
+      Serial.print(" inches ");
+      // Serial.println(inchesFile);
     }
   }
 
-  Serial.println(godBlessYouFile);
+  // Serial.println(godBlessYouFile);
+  Serial.println("of sticky tape. God bless you.");
+  Serial.print("@");
+  Serial.println(millis());
+  Serial.println("");
+  Serial.println("");
+  Serial.println("");
 }
 
 //////
