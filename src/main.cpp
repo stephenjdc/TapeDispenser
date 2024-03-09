@@ -20,6 +20,11 @@
 //////
 //////
 int inchesPerFoot = 12;
+/*
+  There's no practical limit on the amount of tape we can measure, but with the included
+  audio files, the maximum length we can achieve is 11ft 11in.
+*/
+int maximumInches = 143;
 float millimetresPerInch = 25.4;
 /*
   Ideally, the distance from the centerpoint of the spool
@@ -98,6 +103,7 @@ String inchFile = filePrefix + "inch" + fileSuffix;
 String inchesFile = filePrefix + "inches" + fileSuffix;
 String footFile = filePrefix + "foot" + fileSuffix;
 String feetFile = filePrefix + "feet" + fileSuffix;
+String usedTooMuch = filePrefix + "max" + fileSuffix;
 //////
 //////
 
@@ -114,9 +120,13 @@ void triggerBlessing();
 void tapeMoved();
 void resetCounters();
 void triggerBlessing();
-void playBlessingForInches(int inches);
+void queueBlessing(int feet, int inches);
+void printBlessing(int feet, int inches);
+void queueCurse();
+void printCurse();
 void checkEvents();
 void checkSensor();
+void playQueuedAudio();
 //////
 //////
 
@@ -128,6 +138,9 @@ void checkSensor();
 AudioGeneratorMP3 *mp3;
 AudioFileSourceSPIFFS *file;
 AudioOutputI2SNoDAC *out;
+
+String audioFiles[6];
+int arrayPosition = 0;
 //////
 //////
 
@@ -239,61 +252,115 @@ int eventsToInches(int eventCount) {
 }
 
 void triggerBlessing() {
-  playBlessingForInches(eventsToInches(eventCounter));
+  int inches = eventsToInches(eventCounter);
+  int feet = inches / inchesPerFoot;
+  int remainingInches = inches % inchesPerFoot;
+
+  if (inches > maximumInches) {
+    queueCurse();
+    printCurse();
+  } else {
+    queueBlessing(feet, remainingInches);
+    printBlessing(feet, remainingInches);
+  }
+
+  playQueuedAudio();
 }
 
 void resetCounters() {
   eventCounter = 0;
   timeOfLastEvent = 0;
+  arrayPosition = 0;
 }
 
-void playBlessingForInches(int inches) {
-  Serial.println("");
-  Serial.println("");
-  Serial.println("");
+void queueCurse() {
+  audioFiles[arrayPosition] = usedTooMuch;
+  arrayPosition++;
+}
 
-  int feet = inches / inchesPerFoot;
-  int remainingInches = inches % inchesPerFoot;
+void printCurse() {
+  Serial.println("You have wasted a load of sticky tape. Go to confession.");
+}
+
+/*
+  Queue the relevant audio files for the measure
+  tape length.
+*/
+void queueBlessing(int feet, int inches) {
+  audioFiles[arrayPosition] = youHaveUsedFile;
+  arrayPosition++;
+
+  if (feet == 1) {
+    audioFiles[arrayPosition] = filenameForNumber(feet);
+    arrayPosition++;
+    audioFiles[arrayPosition] = footFile;
+    arrayPosition++;
+  } else if (feet > 0) {
+    audioFiles[arrayPosition] = filenameForNumber(feet);
+    arrayPosition++;
+    audioFiles[arrayPosition] = feetFile;
+    arrayPosition++;
+  }
+
+  if (inches == 1) {
+    audioFiles[arrayPosition] = filenameForNumber(inches);
+    arrayPosition++;
+    audioFiles[arrayPosition] = inchFile;
+    arrayPosition++;
+  } else if (inches > 0) {
+    audioFiles[arrayPosition] = filenameForNumber(inches);
+    arrayPosition++;
+    audioFiles[arrayPosition] = inchesFile;
+    arrayPosition++;
+  }
+
+  audioFiles[arrayPosition] = godBlessYouFile;
+  arrayPosition++;
+}
+
+void playQueuedAudio() {
+  Serial.println("---");
+  for (int i = 0; i < arrayPosition; i++) {
+    Serial.println(audioFiles[i]);
+  }
+  Serial.println("---");
+  // file = new AudioFileSourceSPIFFS("/gby.mp3");//godBlessYouFile.c_str());
+  // out = new AudioOutputI2SNoDAC();
+  // mp3 = new AudioGeneratorMP3();
+  // mp3->begin(file, out);
+}
+
+/*
+  A mostly-debug function, to print the measurement to Serial, instead of
+  playing audio.
+*/
+void printBlessing(int feet, int inches) {
+  Serial.println("");
+  Serial.println("----");
 
   Serial.print("You have used ");
-  // Serial.println(youHaveUsedFile);
 
-  if (feet > 0) {
+  if (feet == 1) {
     Serial.print(feet);
-    // Serial.println(filenameForNumber(feet));
-    if (feet == 1) {
-      Serial.print(" foot ");
-      // Serial.println(footFile);
-    } else {
-      Serial.print(" feet ");
-      // Serial.println(feetFile);
-    }
+    Serial.print(" foot ");
+  } else if (feet > 0) {
+    Serial.print(feet);
+    Serial.print(" feet ");
   }
 
-  if (remainingInches > 0) {
-    Serial.print(remainingInches);
-    // Serial.println(filenameForNumber(remainingInches));
-    if (remainingInches == 1) {
-      // Serial.println(inchFile);
-      Serial.print(" inch ");
-    } else {
-      Serial.print(" inches ");
-      // Serial.println(inchesFile);
-    }
+  if (inches == 1) {
+    Serial.print(inches);
+    Serial.print(" inch ");
+  } else if (inches > 0) {
+    Serial.print(inches);
+    Serial.print(" inches ");
   }
 
-  // Serial.println(godBlessYouFile);
   Serial.println("of sticky tape. God bless you.");
   Serial.print("@");
   Serial.println(millis());
+  Serial.println("----");
   Serial.println("");
-  Serial.println("");
-  Serial.println("");
-
-  file = new AudioFileSourceSPIFFS("/gby.mp3");//godBlessYouFile.c_str());
-  out = new AudioOutputI2SNoDAC();
-  mp3 = new AudioGeneratorMP3();
-  mp3->begin(file, out);
 }
 
 //////
