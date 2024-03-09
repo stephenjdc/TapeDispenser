@@ -137,21 +137,31 @@ void setup()
   millimetresPerEvent = circumference/eventsPerFullRotation;
 
   WiFi.mode(WIFI_OFF);
-  // SPIFFS.begin();
+  Serial.begin(115200);
+  delay(1000);
+  SPIFFS.begin();
   pinMode(WARN_LED_PIN, OUTPUT);
   pinMode(STATE_LED_PIN, OUTPUT);
 
-  Serial.begin(115200);
   Serial.println("Hello! How's the son?");
 }
 
 void loop() {
+  if (mp3) {
+    if (mp3->isRunning()) {
+      if (!mp3->loop()) mp3->stop();
+      resetCounters();
+      return;
+    }
+  }
+
   checkSensor();
   checkEvents();
 }
 
 void checkSensor() {
   int value = analogRead(IR_SENSOR_PIN);
+
   if (value < irLowThreshold) {
     if (sensorArmed) {
       tapeMoved();
@@ -279,6 +289,11 @@ void playBlessingForInches(int inches) {
   Serial.println("");
   Serial.println("");
   Serial.println("");
+
+  file = new AudioFileSourceSPIFFS("/gby.mp3");//godBlessYouFile.c_str());
+  out = new AudioOutputI2SNoDAC();
+  mp3 = new AudioGeneratorMP3();
+  mp3->begin(file, out);
 }
 
 //////
