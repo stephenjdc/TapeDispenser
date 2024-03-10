@@ -5,6 +5,7 @@
 #include "AudioOutputI2SNoDAC.h"
 #include "AudioFileSourceSPIFFS.h"
 #include <ESP8266WiFi.h>
+#include <I2S.h>
 
 /*
   NOTES
@@ -54,7 +55,11 @@ float millimetresPerEvent;
 // Rotation Calculation
 //////
 //////
-int eventsPerFullRotation = notchesInSpool; 
+/*
+  There will be twice as many events per rotation as there are notches in the spool,
+  because an event means both the transition LOW->HIGH and HIGH->LOW.
+*/
+int eventsPerFullRotation = notchesInSpool * 2; 
 int minimumEventsToAnnounce = 3;
 int eventCounter = 0;
 unsigned long timeOfLastEvent = 0;
@@ -83,9 +88,10 @@ bool ledState = false;
 #define IR_SENSOR_PIN A0 
 int irLowThreshold = 30;
 int irHighThreshold = 100;
-bool sensorArmed = true;
+bool passedHighThreshold = false;
+bool passedLowThreshold = false;
 // To debounce IR pulses
-float minimumTimeBetweenEvents = 4;
+float minimumTimeBetweenEvents = 2;
 //////
 //////
 
@@ -96,8 +102,8 @@ float minimumTimeBetweenEvents = 4;
 //////
 //////
 String filePrefix = "/";
-String fileSuffix = ".mp3";
-String youHaveUsedFile = filePrefix + "yhy" + fileSuffix;
+String fileSuffix = "_loud.mp3";
+String youHaveUsedFile = filePrefix + "yhu" + fileSuffix;
 String godBlessYouFile = filePrefix + "gby" + fileSuffix;
 String inchFile = filePrefix + "inch" + fileSuffix;
 String inchesFile = filePrefix + "inches" + fileSuffix;
@@ -116,17 +122,19 @@ String filenameForNumber(int number);
 AudioFileSourceSPIFFS* fileForName(String name);
 int eventsToInches(int eventCount);
 bool eventsFinished();
-void triggerBlessing();
 void tapeMoved();
 void resetCounters();
-void triggerBlessing();
+void startAnnouncement();
 void queueBlessing(int feet, int inches);
 void printBlessing(int feet, int inches);
 void queueCurse();
 void printCurse();
-void checkEvents();
-void checkSensor();
+void eventLoop();
+void sensorLoop();
 void playQueuedAudio();
+void playbackLoop();
+void resetPlayback();
+void addToQueue(String filename);
 //////
 //////
 
@@ -140,9 +148,16 @@ AudioFileSourceSPIFFS *file;
 AudioOutputI2SNoDAC *out;
 
 String audioFiles[6];
-int arrayPosition = 0;
+int queueArraySize = 0;
+int queuePlaybackPosition = 0;
+bool playbackInProgress = false;
 //////
 //////
+
+void testAudio() {
+  queueBlessing(1, 3);
+  playQueuedAudio();
+}
 
 void setup()
 {
@@ -156,32 +171,39 @@ void setup()
   pinMode(WARN_LED_PIN, OUTPUT);
   pinMode(STATE_LED_PIN, OUTPUT);
 
+  out = new AudioOutputI2SNoDAC();
+  out->SetOversampling(200);
+  out->SetGain(2.0);
   Serial.println("Hello! How's the son?");
+
+  delay(1000);
+  testAudio();
 }
 
 void loop() {
-  if (mp3) {
-    if (mp3->isRunning()) {
-      if (!mp3->loop()) mp3->stop();
-      resetCounters();
-      return;
-    }
-  }
+  playbackLoop();
 
-  checkSensor();
-  checkEvents();
+  // if audio is playing, skip the rest of the loop.
+  if (playbackInProgress) { return; }
+  sensorLoop();
+  eventLoop();
 }
 
-void checkSensor() {
+void sensorLoop() {
   int value = analogRead(IR_SENSOR_PIN);
 
   if (value < irLowThreshold) {
-    if (sensorArmed) {
+    if (!passedLowThreshold) {
       tapeMoved();
-      sensorArmed = false;
     }
+    passedLowThreshold = true;
+    passedHighThreshold = false;
   } else if (value > irHighThreshold) {
-    sensorArmed = true;
+    if (!passedHighThreshold) {
+      tapeMoved();
+    }
+    passedLowThreshold = false;
+    passedHighThreshold = true;
   }
 }
 
@@ -190,7 +212,7 @@ void checkSensor() {
   Resets event counter if timeout has elapsed
   Triggers audio playback if required
 */ 
-void checkEvents() {
+void eventLoop() {
   if (timeOfLastEvent == 0) {
     return;
   }
@@ -204,7 +226,8 @@ void checkEvents() {
     and reset. If it's below the threshold, just reset.
   */
   if (eventCounter > minimumEventsToAnnounce) {
-    triggerBlessing();
+    playbackInProgress = true;
+    startAnnouncement();
     resetCounters();
   } else {
     resetCounters();
@@ -251,7 +274,7 @@ int eventsToInches(int eventCount) {
   return (int)inches;
 }
 
-void triggerBlessing() {
+void startAnnouncement() {
   int inches = eventsToInches(eventCounter);
   int feet = inches / inchesPerFoot;
   int remainingInches = inches % inchesPerFoot;
@@ -270,12 +293,10 @@ void triggerBlessing() {
 void resetCounters() {
   eventCounter = 0;
   timeOfLastEvent = 0;
-  arrayPosition = 0;
 }
 
 void queueCurse() {
-  audioFiles[arrayPosition] = usedTooMuch;
-  arrayPosition++;
+  addToQueue(usedTooMuch);
 }
 
 void printCurse() {
@@ -287,47 +308,30 @@ void printCurse() {
   tape length.
 */
 void queueBlessing(int feet, int inches) {
-  audioFiles[arrayPosition] = youHaveUsedFile;
-  arrayPosition++;
+  addToQueue(youHaveUsedFile);
 
   if (feet == 1) {
-    audioFiles[arrayPosition] = filenameForNumber(feet);
-    arrayPosition++;
-    audioFiles[arrayPosition] = footFile;
-    arrayPosition++;
+    addToQueue(filenameForNumber(feet));
+    addToQueue(footFile);
   } else if (feet > 0) {
-    audioFiles[arrayPosition] = filenameForNumber(feet);
-    arrayPosition++;
-    audioFiles[arrayPosition] = feetFile;
-    arrayPosition++;
+    addToQueue(filenameForNumber(feet));
+    addToQueue(feetFile);
   }
 
   if (inches == 1) {
-    audioFiles[arrayPosition] = filenameForNumber(inches);
-    arrayPosition++;
-    audioFiles[arrayPosition] = inchFile;
-    arrayPosition++;
+    addToQueue(filenameForNumber(inches));
+    addToQueue(inchFile);
   } else if (inches > 0) {
-    audioFiles[arrayPosition] = filenameForNumber(inches);
-    arrayPosition++;
-    audioFiles[arrayPosition] = inchesFile;
-    arrayPosition++;
+    addToQueue(filenameForNumber(inches));
+    addToQueue(inchesFile);
   }
-
-  audioFiles[arrayPosition] = godBlessYouFile;
-  arrayPosition++;
+  
+  addToQueue(godBlessYouFile);
 }
 
-void playQueuedAudio() {
-  Serial.println("---");
-  for (int i = 0; i < arrayPosition; i++) {
-    Serial.println(audioFiles[i]);
-  }
-  Serial.println("---");
-  // file = new AudioFileSourceSPIFFS("/gby.mp3");//godBlessYouFile.c_str());
-  // out = new AudioOutputI2SNoDAC();
-  // mp3 = new AudioGeneratorMP3();
-  // mp3->begin(file, out);
+void addToQueue(String filename) {
+  audioFiles[queueArraySize] = filename;
+  queueArraySize++;
 }
 
 /*
@@ -376,4 +380,68 @@ String filenameForNumber(int number) {
 
 AudioFileSourceSPIFFS* fileForName(String name) {
   return new AudioFileSourceSPIFFS(name.c_str());
+}
+
+uint32_t i2sACC;
+uint16_t err;
+
+void writeDAC(uint16_t DAC) {
+  for (uint8_t i=0;i<32;i++) {
+    i2sACC=i2sACC<<1;
+
+    if(DAC >= err) {
+      i2sACC|=1;
+      err += 0xFFFF-DAC;
+    } else {
+      err -= DAC;
+    }
+  }
+
+  i2s_write_sample(i2sACC);
+}
+
+void startPlayback() {
+  for (int j=1000;j>1;j--) {
+    writeDAC(0x8000-32767*j/1000);
+  }
+  mp3->begin(fileForName(audioFiles[queuePlaybackPosition]), out);
+}
+
+void stopPlayback() {
+  for (int j=0;j<1000;j++) {
+    writeDAC(0x8000-32767*j/1000);
+  }
+  mp3->stop();
+}
+
+void playbackLoop() {
+  if (!mp3) { return; }
+  if (!mp3->isRunning()) { return; }
+  if (mp3->loop()) { return; }
+
+  /* If the file is finished playing, try moving onto the next file until there are none left. */
+  if (queuePlaybackPosition < queueArraySize - 1) {
+    queuePlaybackPosition++;
+    // mp3->stop();
+    stopPlayback();
+    // mp3->begin(fileForName(audioFiles[queuePlaybackPosition]), out);
+    startPlayback();
+  } else {
+    // mp3->stop();
+    stopPlayback();
+    resetPlayback();
+  }
+}
+
+void playQueuedAudio() {
+  mp3 = new AudioGeneratorMP3();
+  // Start playing the first audio file in the queue.
+  mp3->begin(fileForName(audioFiles[queuePlaybackPosition]), out);
+}
+
+void resetPlayback() {
+  queueArraySize = 0;
+  queuePlaybackPosition = 0;
+  mp3 = NULL;
+  playbackInProgress = false;
 }
