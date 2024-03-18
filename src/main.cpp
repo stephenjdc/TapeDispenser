@@ -102,14 +102,14 @@ float minimumTimeBetweenEvents = 2;
 //////
 //////
 String filePrefix = "/";
-String fileSuffix = "_loud.mp3";
+String fileSuffix = ".mp3";
 String youHaveUsedFile = filePrefix + "yhu" + fileSuffix;
 String godBlessYouFile = filePrefix + "gby" + fileSuffix;
 String inchFile = filePrefix + "inch" + fileSuffix;
 String inchesFile = filePrefix + "inches" + fileSuffix;
 String footFile = filePrefix + "foot" + fileSuffix;
 String feetFile = filePrefix + "feet" + fileSuffix;
-String usedTooMuch = filePrefix + "max" + fileSuffix;
+String usedTooMuch = filePrefix + "curse" + fileSuffix;
 //////
 //////
 
@@ -151,6 +151,8 @@ String audioFiles[6];
 int queueArraySize = 0;
 int queuePlaybackPosition = 0;
 bool playbackInProgress = false;
+uint32_t i2sACC;
+uint16_t err;
 //////
 //////
 
@@ -176,8 +178,11 @@ void setup()
   out->SetGain(2.0);
   Serial.println("Hello! How's the son?");
 
-  delay(1000);
-  testAudio();
+  // Turn on LED when ready
+  digitalWrite(STATE_LED_PIN, HIGH);
+
+  // delay(1000);
+  // testAudio();
 }
 
 void loop() {
@@ -227,6 +232,7 @@ void eventLoop() {
   */
   if (eventCounter > minimumEventsToAnnounce) {
     playbackInProgress = true;
+    digitalWrite(STATE_LED_PIN, LOW);
     startAnnouncement();
     resetCounters();
   } else {
@@ -234,7 +240,7 @@ void eventLoop() {
   }
 }
 
-void showDebugLEDs(unsigned long time, bool debounced) {
+void showDebugLEDs(bool debounced) {
   digitalWrite(WARN_LED_PIN, debounced);
 
   if (ledState) {
@@ -254,10 +260,10 @@ void tapeMoved() {
   unsigned long time = millis();
   // Debounce signal from IR led
   if ((time - timeOfLastEvent) < minimumTimeBetweenEvents) {
-    showDebugLEDs(time, true);
+    // showDebugLEDs(true);
     return;
   } 
-  showDebugLEDs(time, false);
+  // showDebugLEDs(false);
 
   // Set event properties
   eventCounter += 1;  
@@ -275,7 +281,7 @@ int eventsToInches(int eventCount) {
 }
 
 void startAnnouncement() {
-  int inches = eventsToInches(eventCounter);
+  int inches = eventsToInches(eventCounter - 1);
   int feet = inches / inchesPerFoot;
   int remainingInches = inches % inchesPerFoot;
 
@@ -382,9 +388,6 @@ AudioFileSourceSPIFFS* fileForName(String name) {
   return new AudioFileSourceSPIFFS(name.c_str());
 }
 
-uint32_t i2sACC;
-uint16_t err;
-
 void writeDAC(uint16_t DAC) {
   for (uint8_t i=0;i<32;i++) {
     i2sACC=i2sACC<<1;
@@ -401,13 +404,15 @@ void writeDAC(uint16_t DAC) {
 }
 
 void startPlayback() {
-  for (int j=1000;j>1;j--) {
+  // Reduce pop at start of audio
+  for (int j=1000;j>700;j--) {
     writeDAC(0x8000-32767*j/1000);
   }
   mp3->begin(fileForName(audioFiles[queuePlaybackPosition]), out);
 }
 
 void stopPlayback() {
+  // Reduce pop at end of audio
   for (int j=0;j<1000;j++) {
     writeDAC(0x8000-32767*j/1000);
   }
@@ -422,12 +427,9 @@ void playbackLoop() {
   /* If the file is finished playing, try moving onto the next file until there are none left. */
   if (queuePlaybackPosition < queueArraySize - 1) {
     queuePlaybackPosition++;
-    // mp3->stop();
     stopPlayback();
-    // mp3->begin(fileForName(audioFiles[queuePlaybackPosition]), out);
     startPlayback();
   } else {
-    // mp3->stop();
     stopPlayback();
     resetPlayback();
   }
@@ -444,4 +446,6 @@ void resetPlayback() {
   queuePlaybackPosition = 0;
   mp3 = NULL;
   playbackInProgress = false;
+  digitalWrite(STATE_LED_PIN, HIGH);
+  Serial.println("Will you have another cup of tea?");
 }
