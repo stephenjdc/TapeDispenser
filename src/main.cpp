@@ -11,7 +11,15 @@
   NOTES
 
   'events' are when the signal from the IR sensor changes
-  i.e. both HIGH->LOW and LOW->HIGH transitions
+  i.e. both HIGH->LOW and LOW->HIGH transitions. So there
+  are twice as many events per rotation as there are notches
+  in the spool.
+
+  Since we're measuring an analog value, and to avoid
+  excess events, we measure when the sensor value crosses an
+  upper threshold or lower threshold. When one is crossed, we
+  report an event, then wait until the other threshold is
+  crossed before reporting another event.
 
 */
 
