@@ -3,7 +3,8 @@
 If you'd like to build your own tape dispenser, which tells you how much you've used, and blesses you afterwards, you have two choices.
 
 1. Leave out a pencil and paper one night before bed, and hope that by the morning God will have written down the instructions.
-2. Clone this repo, buy the required parts, a 3D printer, and get to work.
+2. Buy one from me. Maybe? Details coming soon(?)
+3. Clone this repo, buy the required parts, a 3D printer, and get to work.
 
 ## License 
 Feel free to make/reuse/modify this project for personal use. In the unlikely event that you're planning to spin up a large-scale production line to make thousands of these, I'd really recommend doing a few more revisions on the code and the models. In which case, I'm available at a very reasonable rate.
