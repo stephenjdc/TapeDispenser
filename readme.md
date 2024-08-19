@@ -15,8 +15,8 @@ Feel free to make/reuse/modify this project for personal use. In the unlikely ev
 
 ### Electronics
 - 1× ESP8266 or similar (e.g. I used an ESP-12E)
-- 1× IR photodiode
-- 1× IR LED
+- 1× IR photodiode (3mm)
+- 1× IR LED (3mm)
 - 2× 1k resistors
 - 2× 10k resistors
 - 1× 220Ω resistor
