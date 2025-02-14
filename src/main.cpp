@@ -175,7 +175,7 @@ void setup()
   millimetresPerEvent = circumference/eventsPerFullRotation;
 
   WiFi.mode(WIFI_OFF);
-  Serial.begin(115200);
+  Serial.begin(75200);
   delay(1000);
   SPIFFS.begin();
   pinMode(WARN_LED_PIN, OUTPUT);
