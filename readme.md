@@ -1,6 +1,7 @@
 # Talking Tape Dispenser
+Blog post: https://stephencoyle.net/kilnettle
 
-If you'd like to build your own tape dispenser, which tells you how much you've used, and blesses you afterwards, you have two choices.
+If you'd like to build your own [tape dispenser](https://stephencoyle.net/kilnettle), which tells you how much you've used, and blesses you afterwards, you have two choices.
 
 1. Leave out a pencil and paper one night before bed, and hope that by the morning God will have written down the instructions.
 2. Buy one from me. Maybe? Details coming soon(?)
