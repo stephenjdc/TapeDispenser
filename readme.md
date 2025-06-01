@@ -5,7 +5,7 @@ If you'd like to build your own [tape dispenser](https://stephencoyle.net/kilnet
 
 1. Leave out a pencil and paper one night before bed, and hope that by the morning God will have written down the instructions.
 2. Buy one from me. Maybe? Details coming soon(?)
-3. Clone this repo, buy the required parts, a 3D printer, and get to work.
+3. Clone this repo, buy the required parts, a 3D printer, and get to work. [Here's an assembly tutorial](https://youtu.be/CnwMDydeqiA).
 
 Please note that, while the dispenser does aim to fairly accurate, it's not perfectly accurate as it doesn't adjust for the amount of tape used. In the code I've just split the error, so it will tend to overshoot the measurement when a roll is full, and undershoot a bit when it's empty. Given we're only dealing with one-inch resolution, I feel like it's probably fine. You can tweak the code if you want to try and improve on this. There's also is a no-code way to tweak it, detailed below.
 
@@ -27,8 +27,10 @@ Feel free to make/reuse/modify this project for personal use. In the unlikely ev
 - 1× 18mm × 12mm slide switch (or any that fits the space on the model)
 - Battery clips for 2x AAA batteries
 
+There are included PCB files which you can use to create a PCB for this, but point-to-point soldering can also work if you don't want to do that.
+
 ### Dispenser body
-#### These parts are 3D-printable
+#### These parts are 3D-printable (in the models folder)
 - 1× tape dispenser body
 - 1× tape dispenser lid (which holds the spool)
 - 1× battery compartment cover
