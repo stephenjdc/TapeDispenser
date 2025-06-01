@@ -27,7 +27,7 @@ Feel free to make/reuse/modify this project for personal use. In the unlikely ev
 - 1× 18mm × 12mm slide switch (or any that fits the space on the model)
 - Battery clips for 2x AAA batteries
 
-There are included PCB files which you can use to create a PCB for this, but point-to-point soldering can also work if you don't want to do that.
+There are included KiCAD files which you can use to create a PCB for this, but point-to-point soldering can also work if you don't want to do that.
 
 ### Dispenser body
 #### These parts are 3D-printable (in the models folder)
