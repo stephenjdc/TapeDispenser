@@ -45,7 +45,7 @@ There are included KiCAD files which you can use to create a PCB for this, but p
 
 
 ## Instructions
-I'm gonna keep these fairly sparse, and following what I did. But there's no right way to do it. In the very unlikely event that you actually want to make one yourself, message me with any questions.
+I'm gonna keep these fairly sparse, and following what I did. But there's no right way to do it. In the very unlikely event that you actually want to make one yourself, and run into trouble, feel free to message me with any questions.
 
 1. Flash the ESP-12E with the included sketch, _and data folder_. I used PlatformIO and would suggest you do too.
 2. 3D print the included files.
