@@ -1,4 +1,7 @@
-# Talking Tape Dispenser
+# Kilnettle Shrine Souvenir Tape Dispenser
+
+![image](https://github.com/user-attachments/assets/951b7cff-6918-4416-88ca-098fa9da45bc)
+
 Blog post: https://stephencoyle.net/kilnettle
 
 If you'd like to build your own [tape dispenser](https://stephencoyle.net/kilnettle), which tells you how much you've used, and blesses you afterwards, you have two choices.
