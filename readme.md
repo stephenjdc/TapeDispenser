@@ -32,6 +32,23 @@ Feel free to make/reuse/modify this project for personal use. In the unlikely ev
 
 There are included KiCAD files which you can use to create a PCB for this, but point-to-point soldering can also work if you don't want to do that.
 
+#### PCB Legend
+| PCB Label | Component | Description |
+|---|---|---|
+| `R1` | `1K resistor` | |
+| `R2` | `220R resistor` | |
+| `R3` | `1K resistor` | |
+| `R4` | `10K resistor` | |
+| `R5` | `10K resistor` | |
+| `D1` | `Photodiode` | Small black LED |
+| `D2` | `IR LED` |  Small clear LED |
+| `D3` | `Indicator LED` | Red LED |
+| `LS1` | `Speaker` |  |
+| `Q1` | `2N3904 Transistor` |  |
+| `U1` | `ESP8266` |  |
+| `J1` | `GND` |  |
+| `J2` | `+3V` | |
+
 ### Dispenser body
 #### These parts are 3D-printable (in the models folder)
 - 1× tape dispenser body
